@@ -1,6 +1,70 @@
 # python-tricks
 Coding patterns that I'm trying to intentionally integrate into my vocabulary
 
+
+# Contents 
+
+**[Function Caching](#function-caching)**
+
+**[Group By and Summarize](#group-by-and-summarize)**
+
+**[STILL IN PROGRESS: Sliding Window over an Iterator](#still-in-progress-sliding-window-over-an-iterator)**
+
+## Function Caching
+
+```python
+import functools
+import time
+
+def time_function(func):
+    """Logs time taken to run a function
+    Based this function on code from: 
+    https://stackoverflow.com/questions/1622943/timeit-versus-timing-decorator"""
+
+    @functools.wraps(func)
+    def wrap(*args, **kwargs):
+        time_start = time.perf_counter()
+        result = func(*args, **kwargs)
+        time_end = time.perf_counter()
+        print(
+            "func:%r args:[%r, %r] took: %2.4f sec"
+            % (func.__name__, args, kwargs, time_end - time_start)
+        )
+        return result
+
+    return wrap
+
+@time_function
+@functools.cache # remembers everything (inifinite memory)
+def number_squared(num: int) -> None:
+    time.sleep(num)
+    return num * num
+
+print(number_squared(1))  # took 1 sec
+print(number_squared(2))  # took 2 secs
+print(number_squared(3))  # took 3 secs
+print(number_squared(1))  # took <0 secs
+print(number_squared(2))  # took <0 secs
+print(number_squared(3))  # took <0 secs
+
+@time_function
+@functools.lru_cache(maxsize=3)  # same as cache but has a limited memory
+def number_squared_memory3(num: int) -> None:
+    time.sleep(num)
+    return num * num
+
+print(number_squared_memory3(1))  # took 1 sec
+print(number_squared_memory3(2))  # took 2 secs (remembers 1)
+print(number_squared_memory3(3))  # took 3 secs (remembers 1,2)
+print(number_squared_memory3(4))  # took 4 secs (remembers 1,2,3)
+print(number_squared_memory3(2))  # took <0 secs (remembers 2,3,4)
+print(number_squared_memory3(3))  # took <0 secs (remembers 2,3,4)
+print(number_squared_memory3(4))  # took <0 secs (remembers 2,3,4)
+print(number_squared_memory3(1))  # took 1 sec (remembers 2,3,4)
+print(number_squared_memory3(3))  # took <0 secs (remembers 3,4,1)
+print(number_squared_memory3(2))  # took 2 secs (remembers 3,4,1)
+```
+
 ## Group By and Summarize
 
 ```python
@@ -41,3 +105,31 @@ gender=1, n_users=3
 gender=0, average_age=62.0
 gender=1, average_age=12.0
 ```
+
+## STILL IN PROGRESS: Sliding Window over an Iterator
+
+!!I'm still checking this code out!!
+
+```python
+import itertools
+from typing import Any, Iterator
+
+def window(seq, window_len:int):
+    "Returns a sliding window (of width n) over data from the iterable"
+    "   s -> (s0,s1,...s[n-1]), (s1,s2,...,sn), ...                   "
+    it = iter(seq)
+    result = tuple(itertools.islice(it, window_len))
+    if len(result) == window_len:
+        yield result
+    for elem in it:
+        result = result[1:] + (elem,)
+        yield result
+    
+def list_to_generator(values_list: list[Any]) -> Iterator[int]:
+    """Converts a list into a generator"""
+    for value in values_list:
+        yield value
+
+nums = list_to_generator([23, -68, 5, -42, 48, 63, 93, -57, -96, 44])
+```
+
