@@ -4,12 +4,21 @@ Coding patterns that I'm trying to intentionally integrate into my vocabulary
 
 # Contents 
 
+**[Flatten a List of Lists](#flatten-a-list-of-lists)**
+
 **[Function Caching](#function-caching)**
 
 **[Group By and Summarize](#group-by-and-summarize)**
 
 **[STILL IN PROGRESS: Sliding Window over an Iterator](#still-in-progress-sliding-window-over-an-iterator)**
 
+# Flatten a List of Lists
+```python
+>>> import itertools
+>>> list_of_lists: list[list[int]] = [[1,2],[3,4,5],[6],[7,8,9,10]]
+>>> list( itertools.chain(*list_of_lists) )
+[1,2,3,4,5,6,7,8,9,10]
+```
 ## Function Caching
 
 ```python
