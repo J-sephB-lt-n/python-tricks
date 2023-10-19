@@ -19,11 +19,11 @@ A logging decorator is a nice way to standardize the logging output format acros
 
 The logging decorator function shown below does the following:
 
-* All logging is done via the python logger (in the standard library **logging** module). The logging decorator must be passed in a python logger instance as an argument.
+* All logging is done via the python logger (in the standard library **logging** module). The logging decorator must be passed a python logger instance as an argument.
 
-* The input arguments of the function are logged immediately prior to the wrapped function running.     
+* The logging decorator automatically logs the function starting and finishing (it could easily be extended to also log the function input arguments).
 
-* If the wrapped function raises an exception, then this exception is logged.
+* If the wrapped function raises an exception, then this exception is automatically logged.
 
 * If the wrapped function returns a tuple of elements, where one (or more) of the elements are dictionaries with this format:
 
@@ -40,20 +40,21 @@ The logging decorator function shown below does the following:
 }
 ```
 
-...then each tuple ```(logging.<LEVEL>, {})``` contained within the list (i.e. within the *"logs"* key) will separately also be logged (after the function has finished). 
+...then each tuple ```(logging.<LEVEL>, {})``` contained within this list (i.e. within the *"logs"* key) will separately also be logged (after the function has finished). 
 
-* All of the logs use a json-like **structured logging** format
+The format of the logs are standardised using a json-like **structured logging** format
 
-The basic usage is:
+The basic usage of the logging decorator looks like this:
 
 ```python
 >>> import logging
 
+>>> # set up a logger #
 >>> logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 >>> logger = logging.getLogger()
 
 >>> # function definition #
->>> @log_output(logger)
+>>> @log_output(logger)     # this is the decorator which automatically logs at run-time (and automatically captures logs output by the function)
 ... def my_function(arg1, arg2, arg3):
 ...     logs_to_return = []
 ...     # do some function stuff here #
@@ -100,57 +101,57 @@ TypeError: my_function() missing 3 required positional arguments: 'arg1', 'arg2'
 Here is a slightly more complex working example:
 
 ```python
-# standard library imports #
-import datetime
-import logging
-import uuid 
+>>> # standard library imports #
+>>> import datetime
+>>> import logging
+>>> import uuid 
 
-# 3rd party imports #
-import httpx
+>>> # 3rd party imports #
+>>> import httpx
 
-# project-specific imports # 
-from logging_tools import log_output, StructLog
+>>> # project-specific imports # 
+>>> from logging_tools import log_output, StructLog
 
-# set up a logger # 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-logger = logging.getLogger()
+>>> # set up a logger # 
+>>> logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+>>> logger = logging.getLogger()
 
 # define our function #
-@log_output(logger)
-def scrape_webpage(url: str) -> str:
-    """(dummy example function) Scrapes [url], returning the response content as text"""
-    logs_list: list[dict] = []
-    scrape_id: str = uuid.uuid4().hex
-    logs_list.append(
-        (
-            logging.INFO,
-            StructLog(
-                message="started scrape",
-                scrape_id=scrape_id,
-                step_name="pre_scrape",
-                url=url,
-                datetime_utc=datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-            ),
-        )
-    )
-    url_response: httpx.Response = httpx.get(url)
-    if url_response.status_code != 200:
-        # DONT DO THIS IN A REAL PROJECT: raise a specific exception #
-        raise Exception(f"received response {url_response.status_code}")
-    logs_list.append(
-        (
-            logging.INFO,
-            StructLog(
-                message="finished scrape",
-                response_len=len(url_response.text),
-                scrape_id=scrape_id,
-                step_name="post_scrape",
-                url=url,
-                datetime_utc=datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-            ),
-        )
-    )
-    return url_response.text, {"logs": logs_list}
+>>> @log_output(logger)
+... def scrape_webpage(url: str) -> str:
+...     """(poorly written dummy example function) Scrapes [url], returning the response content as text"""
+...     logs_list: list[dict] = []
+...     scrape_id: str = uuid.uuid4().hex
+...     logs_list.append(
+...         (
+...             logging.INFO,
+...             StructLog(
+...                 message="started scrape",
+...                 scrape_id=scrape_id,
+...                 step_name="pre_scrape",
+...                 url=url,
+...                 datetime_utc=datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+...             ),
+...         )
+...     )
+...     url_response: httpx.Response = httpx.get(url)
+...     if url_response.status_code != 200:
+...         # DONT DO THIS IN A REAL PROJECT: raise a specific exception #
+...         raise Exception(f"received response {url_response.status_code}")
+...     logs_list.append(
+...         (
+...             logging.INFO,
+...             StructLog(
+...                 message="finished scrape",
+...                 response_len=len(url_response.text),
+...                 scrape_id=scrape_id,
+...                 step_name="post_scrape",
+...                 url=url,
+...                 datetime_utc=datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+...             ),
+...         )
+...     )
+...     return url_response.text, {"logs": logs_list}
 
 >>> scrape_webpage("https://www.google.com")
 INFO started running function scrape_webpage >>> {"datetime_utc": "2023-10-19 12:14:29"}
@@ -208,7 +209,6 @@ def log_output(logger: logging.Logger) -> None:
                 logger.level,
                 StructLog(
                     message=f"started running function {func.__name__}",
-                    #function_name=str(func.__name__),
                     datetime_utc=datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
                 )
             )
@@ -238,7 +238,6 @@ def log_output(logger: logging.Logger) -> None:
                 logger.level,
                 StructLog(
                     message=f"finished running function {func.__name__}",
-                    #function_name=str(func.__name__),
                     datetime_utc=datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
                 )
             )
